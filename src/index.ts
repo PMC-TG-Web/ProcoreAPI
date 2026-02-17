@@ -31,16 +31,15 @@ app.get('/api/projects', async (req: Request, res: Response) => {
   }
 });
 
-// Basic Route
-app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Welcome to the Procore API Gateway' });
-});
-
 // Health Check
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+export default app;
