@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procore Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <div class="max-w-6xl mx-auto p-6">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-blue-800">Procore Project Analytics</h1>
+            <a href="/api/auth/login" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">Login with Procore</a>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Project Selector -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Select Project</h2>
+                <select id="projectSelect" class="w-full p-2 border rounded mb-4" onchange="fetchData()">
+                    <option value="">Choose a project...</option>
+                </select>
+                <button onclick="refreshProjects()" class="text-sm text-blue-600 hover:underline">Refresh Project List</button>
+            </div>
+
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-2 gap-4" id="statsGrid">
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                    <p class="text-sm text-gray-500 uppercase">Total Hours</p>
+                    <p id="totalHours" class="text-2xl font-bold">--</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                    <p class="text-sm text-gray-500 uppercase">Budget Variance</p>
+                    <p id="budgetVariance" class="text-2xl font-bold">--</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Labor Breakdown -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-bold mb-4">Labor Hours by Cost Code</h3>
+                <div id="laborTable" class="overflow-x-auto">
+                    <p class="text-gray-400 italic">Select a project to view labor data...</p>
+                </div>
+            </div>
+
+            <!-- Budget Details -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-bold mb-4">Budget Summary</h3>
+                <div id="budgetContent">
+                    <p class="text-gray-400 italic">Select a project to view budget data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function refreshProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                const projects = await res.json();
+                const select = document.getElementById('projectSelect');
+                select.innerHTML = '<option value="">Choose a project...</option>';
+                projects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = `${p.name} (${p.project_number})`;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error('Error fetching projects:', e); }
+        }
+
+        async function fetchData() {
+            const projectId = document.getElementById('projectSelect').value;
+            if (!projectId) return;
+
+            // Fetch Labor
+            fetch(`/api/labor/summary/${projectId}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('totalHours').textContent = data.summary.totalHours || '0';
+                    let table = '<table class="w-full text-sm text-left"><thead><tr class="border-b"><th>Cost Code</th><th class="text-right">Hours</th></tr></thead><tbody>';
+                    data.breakdown.forEach(row => {
+                        table += `<tr class="border-b"><td class="py-2">${row.costCode}</td><td class="text-right">${row.hours}</td></tr>`;
+                    });
+                    table += '</tbody></table>';
+                    document.getElementById('laborTable').innerHTML = table;
+                });
+
+            // Fetch Budget
+            fetch(`/api/budget/summary/${projectId}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('budgetVariance').textContent = `$${data.variance.toLocaleString()}`;
+                    const content = `
+                        <div class="space-y-2">
+                            <div class="flex justify-between"><span>Original Budget:</span><span class="font-semibold">$${data.originalBudget.toLocaleString()}</span></div>
+                            <div class="flex justify-between"><span>Revised Budget:</span><span class="font-semibold">$${data.revisedBudget.toLocaleString()}</span></div>
+                            <div class="flex justify-between border-t pt-2"><span>Spent to Date:</span><span class="text-red-600 font-bold">$${data.spentAmount.toLocaleString()}</span></div>
+                        </div>
+                    `;
+                    document.getElementById('budgetContent').innerHTML = content;
+                });
+        }
+
+        refreshProjects();
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import laborRoutes from './routes/laborRoutes';
 import authRoutes from './routes/authRoutes';
 import budgetRoutes from './routes/budgetRoutes';
 import { ProjectService } from './services/projectService';
+import path from 'path';
 
 // Initialize environment variables
 dotenv.config();
@@ -13,6 +14,7 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
 app.use('/api/labor', laborRoutes);
